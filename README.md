@@ -28,7 +28,18 @@ Compile the project (including all dependencies) in dev mode.
 
 ### Running the model
 
-TODO
+The neural network model can be ran by calling `src/main.rs` like so:
+
+    cargo run --release
+
+By default, the model will be trained using the `Wgpu`
+[backend](https://burn.dev/book/basic-workflow/backend.html). The training should show
+up as a Terminal User Interface (TUI) dashboard:
+
+![ClimSim Burn model training progression visualized on a Terminal User Interface](https://github.com/weiji14/climsimburn/assets/23487320/99d027f6-5f76-4d56-bf07-5d2912c25baf)
+
+Logs will be saved to `/tmp/experiment.log` by default. Hyperparameters can be adjusted
+by modifying the default values in the `TrainingConfig` struct in `src/training.rs`.
 
 
 ## References
