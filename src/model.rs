@@ -11,7 +11,6 @@ pub struct ClimSimModel<B: Backend> {
 
 #[derive(Config, Debug)]
 pub struct ClimSimModelConfig {
-    num_classes: usize,
     hidden_size: usize,
 }
 
@@ -19,8 +18,8 @@ impl ClimSimModelConfig {
     // Returns the initialized model
     pub fn init<B: Backend>(&self, device: &B::Device) -> ClimSimModel<B> {
         ClimSimModel {
-            linear1: LinearConfig::new(1, self.hidden_size).init(device),
-            linear2: LinearConfig::new(self.hidden_size, self.num_classes).init(device),
+            linear1: LinearConfig::new(556, self.hidden_size).init(device),
+            linear2: LinearConfig::new(self.hidden_size, 368).init(device),
             activation: Relu::new(),
         }
     }

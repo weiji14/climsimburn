@@ -16,7 +16,7 @@ fn main() {
     let device = burn::backend::wgpu::WgpuDevice::BestAvailable;
     crate::training::train::<MyAutodiffBackend>(
         "/tmp",
-        crate::training::TrainingConfig::new(ClimSimModelConfig::new(1, 256), AdamConfig::new()),
+        crate::training::TrainingConfig::new(ClimSimModelConfig::new(256), AdamConfig::new()),
         device,
     );
 }
