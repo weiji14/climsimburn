@@ -799,6 +799,7 @@ dependencies = [
  "arrow-csv",
  "burn",
  "derive-new",
+ "num-traits",
 ]
 
 [[package]]
