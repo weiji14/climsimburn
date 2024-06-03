@@ -8,7 +8,7 @@ use burn::train::metric::{Adaptor, CpuUse, LossInput, LossMetric};
 use burn::train::{LearnerBuilder, TrainOutput, TrainStep, ValidStep};
 use derive_new::new;
 
-use crate::data::{ClimSimBatch, ClimSimBatcher, ClimSimDataset};
+use crate::data::{ClimSimBatch, ClimSimBatcher, ClimSimDataSplit, ClimSimDataset};
 use crate::model::{ClimSimModel, ClimSimModelConfig};
 
 /// Regression output adapted for multiple climate variables in the ClimSim dataset..
@@ -103,13 +103,13 @@ pub fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, dev
         .batch_size(config.batch_size)
         .shuffle(config.seed)
         .num_workers(config.num_workers)
-        .build(ClimSimDataset::new().unwrap());
+        .build(ClimSimDataset::new(ClimSimDataSplit::Train).unwrap());
 
     let dataloader_valid = DataLoaderBuilder::new(batcher_valid)
         .batch_size(config.batch_size)
         .shuffle(config.seed)
         .num_workers(config.num_workers)
-        .build(ClimSimDataset::new().unwrap());
+        .build(ClimSimDataset::new(ClimSimDataSplit::Valid).unwrap());
 
     // Setup learner
     let learner = LearnerBuilder::new(artifact_dir)
