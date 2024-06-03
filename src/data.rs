@@ -20,15 +20,26 @@ pub(crate) struct ClimSimItem {
     pub target: Vec<f64>, // [f64; 368]
 }
 
+pub enum ClimSimDataSplit {
+    Train,
+    Valid,
+    Test,
+}
+
 /// Reading ClimSim data from a CSV file into Arrow float arrays.
 pub struct ClimSimDataset {
     dataset: RwLock<Reader<File>>,
+    split: ClimSimDataSplit,
 }
 
 impl ClimSimDataset {
-    pub fn new() -> ArrowResult<Self> {
-        let mut file =
-            File::open("data/train.csv").map_err(|err| ArrowError::CsvError(err.to_string()))?;
+    pub fn new(split: ClimSimDataSplit) -> ArrowResult<Self> {
+        let filename = match split {
+            ClimSimDataSplit::Train | ClimSimDataSplit::Valid => "data/train.csv",
+            ClimSimDataSplit::Test => "data/test.csv",
+        };
+
+        let mut file = File::open(filename).map_err(|err| ArrowError::CsvError(err.to_string()))?;
 
         // Infer schema automatically
         let format = Format::default().with_header(true);
@@ -38,11 +49,17 @@ impl ClimSimDataset {
 
         let csv_reader = ReaderBuilder::new(Arc::new(schema))
             .with_header(true)
-            .with_batch_size(1) // read one row at a time
-            .build(file)?;
+            .with_batch_size(1); // read one row at a time
+
+        let csv_reader_subset = match split {
+            ClimSimDataSplit::Train => csv_reader.with_bounds(0, 256000).build(file)?,
+            ClimSimDataSplit::Valid => csv_reader.with_bounds(256000, 512000).build(file)?,
+            ClimSimDataSplit::Test => csv_reader.build(file)?, // read all 625000 rows in test.csv
+        };
 
         let dataset = Self {
-            dataset: RwLock::new(csv_reader),
+            dataset: RwLock::new(csv_reader_subset),
+            split,
         };
 
         Ok(dataset)
@@ -58,10 +75,14 @@ impl Dataset<ClimSimItem> for ClimSimDataset {
         match item {
             Some(r) => {
                 let mut rec_batch = r.unwrap();
-                assert_eq!(rec_batch.num_columns(), 925); // 1 index + 556 input + 368 target columns
+                if let ClimSimDataSplit::Train = self.split {
+                    assert_eq!(rec_batch.num_columns(), 925); // 1 index + 556 input + 368 target columns
+                };
 
                 let _ = rec_batch.remove_column(0); // drop first string index column
-                assert_eq!(rec_batch.num_columns(), 924); // 556 input + 368 target columns
+                if let ClimSimDataSplit::Train = self.split {
+                    assert_eq!(rec_batch.num_columns(), 924); // 556 input + 368 target columns
+                };
 
                 // https://docs.rs/arrow-array/51.0.0/arrow_array/index.html#downcasting-an-array
                 let row_buffer: Vec<f64> = rec_batch
@@ -72,7 +93,12 @@ impl Dataset<ClimSimItem> for ClimSimDataset {
                     .collect();
 
                 let input: Vec<f64> = row_buffer[0..556].to_vec(); // input has 556 columns
-                let target: Vec<f64> = row_buffer[556..924].to_vec(); // target has 368 columns
+                let target: Vec<f64> = match self.split {
+                    ClimSimDataSplit::Train | ClimSimDataSplit::Valid => {
+                        row_buffer[556..924].to_vec() // target has 368 columns
+                    }
+                    ClimSimDataSplit::Test => vec![f64::NAN; 368], // NAN target values for test set
+                };
 
                 Some(ClimSimItem { input, target })
             }
@@ -84,7 +110,10 @@ impl Dataset<ClimSimItem> for ClimSimDataset {
         // let row_count = rw_access.count();
         // drop(rw_access);
         // row_count
-        256
+        match self.split {
+            ClimSimDataSplit::Train | ClimSimDataSplit::Valid => 256000,
+            ClimSimDataSplit::Test => 625000,
+        }
     }
 }
 
