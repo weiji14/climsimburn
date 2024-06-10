@@ -1,10 +1,13 @@
 // https://burn.dev/book/basic-workflow/inference.html
 use std::fs::File;
+use std::io::Seek;
 use std::sync::Arc;
 
-use arrow::array::{make_array, Array, ArrayRef, Float64Array, RecordBatch, StringArray};
+use arrow::array::{
+    make_array, Array, ArrayRef, Float64Array, Int64Array, RecordBatch, StringArray,
+};
 use arrow::datatypes::{DataType, Field, SchemaBuilder};
-use arrow_csv::reader::Format;
+use arrow_csv::reader::{Format, ReaderBuilder};
 use arrow_csv::writer::Writer;
 use burn::config::Config;
 use burn::data::dataloader::DataLoaderBuilder;
@@ -38,14 +41,21 @@ pub(crate) fn infer<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
 
     // Obtain template CSV schema from sample_submission.csv file
     let mut sample_file =
-        File::open("data/sample_submission.csv").expect("Error reading sample_submission.csv file");
-    let (template_schema, _) = Format::default()
+        File::open("data/sample_submission.csv").expect("Error opening sample_submission.csv file");
+    let (sample_schema, _) = Format::default()
         .with_header(true)
         .infer_schema(&mut sample_file, Some(100))
         .expect("Failed to infer schema");
-    // Change Int64 fields to Float64
+    sample_file.rewind().unwrap();
+    // Read sample_submission.csv rows (to multiply with predictions later)
+    let mut sample_reader = ReaderBuilder::new(Arc::new(sample_schema.clone()))
+        .with_header(true)
+        .with_batch_size(config.batch_size)
+        .build(sample_file)
+        .expect("Error reading sample_submission.csv file");
+    // Change Int64 fields to Float64 for the writer schema
     let mut builder = SchemaBuilder::new();
-    for field in template_schema.fields.iter() {
+    for field in sample_schema.fields.iter() {
         if field.data_type().is_integer() {
             let new_field = <Field as Clone>::clone(field).with_data_type(DataType::Float64);
             builder.push(new_field);
@@ -61,14 +71,13 @@ pub(crate) fn infer<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
     let mut writer = Writer::new(&mut file);
 
     // Get predictions on each mini-batch
-    for batch in dataloader_test.iter() {
+    for (i, batch) in dataloader_test.iter().enumerate() {
         let predictions: Tensor<_, 2> = model.forward(batch.inputs);
-
         // println!("Predicted: {predictions}");
         // println!("Target {}", batch.targets);
 
-        // Convert tensor to numerical columns
-        let mut output_columns: Vec<ArrayRef> = predictions
+        // Convert predicted tensor to numerical values
+        let mut pred_values: Vec<Vec<f64>> = predictions
             .iter_dim(1) // iterate over each column
             .map(|col| col.to_data().value)
             .map(|val| {
@@ -76,7 +85,50 @@ pub(crate) fn infer<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
                     .map(|e| e.to_f64().expect("conversion to f64 failed"))
                     .collect::<Vec<_>>()
             })
-            .map(|vec| Float64Array::from(vec))
+            .collect();
+
+        // Prepare weight values from sample_submission.csv (to multiply against pred values later)
+        let row_group = sample_reader.nth(i).expect("should have some rows");
+        let mut sample_batch: RecordBatch = row_group.unwrap();
+        let _ = sample_batch.remove_column(0); //  drop first string index column
+        let weight_values: Vec<Vec<f64>> = sample_batch
+            .columns()
+            .iter()
+            // Cast Int64 columns to Float64
+            .map(|arr| {
+                let dtype = arr.data_type();
+                match dtype {
+                    DataType::Float64 => arr
+                        .as_any()
+                        .downcast_ref::<Float64Array>()
+                        .unwrap()
+                        .values()
+                        .to_vec(),
+                    DataType::Int64 => arr
+                        .as_any()
+                        .downcast_ref::<Int64Array>()
+                        .unwrap()
+                        .values()
+                        .into_iter()
+                        .map(|v| v.to_f64().unwrap())
+                        .collect(),
+                    _ => panic!("Conversion for {dtype} not implemented"),
+                }
+            })
+            .collect();
+
+        // Multiply predicted values with weight values to get output columns
+        for (pred, weight) in pred_values.iter_mut().zip(weight_values.iter()) {
+            for (p, w) in pred.iter_mut().zip(weight.iter()) {
+                // println!("Old (raw value): {} * weight {}", &p, &w);
+                *p = *p * w;
+                // println!("New (weighted): {}", p);
+            }
+        }
+
+        let mut output_columns: Vec<ArrayRef> = pred_values
+            .iter()
+            .map(|vec| Float64Array::from(vec.clone()))
             .map(|arr| make_array(arr.to_data()))
             .collect();
 
