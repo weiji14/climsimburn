@@ -88,7 +88,7 @@ pub(crate) fn infer<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
             .collect();
 
         // Prepare weight values from sample_submission.csv (to multiply against pred values later)
-        let row_group = sample_reader.nth(i).expect("should have some rows");
+        let row_group = sample_reader.nth(0).expect("should have some rows");
         let mut sample_batch: RecordBatch = row_group.unwrap();
         let _ = sample_batch.remove_column(0); //  drop first string index column
         let weight_values: Vec<Vec<f64>> = sample_batch
