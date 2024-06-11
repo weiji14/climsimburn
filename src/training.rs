@@ -65,7 +65,7 @@ pub struct TrainingConfig {
     pub model: ClimSimModelConfig,
     pub optimizer: AdamConfig,
 
-    #[config(default = 100)]
+    #[config(default = 20)]
     pub num_epochs: usize,
 
     #[config(default = 32)]

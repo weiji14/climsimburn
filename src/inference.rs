@@ -35,8 +35,8 @@ pub(crate) fn infer<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
     // Get data from test.csv
     let batcher_test = ClimSimBatcher::<B::InnerBackend>::new(device);
     let dataloader_test = DataLoaderBuilder::new(batcher_test)
-        .batch_size(config.batch_size)
-        .num_workers(config.num_workers)
+        .batch_size(625)
+        .num_workers(1)
         .build(ClimSimDataset::new(ClimSimDataSplit::Test).unwrap());
 
     // Obtain template CSV schema from sample_submission.csv file
@@ -50,7 +50,7 @@ pub(crate) fn infer<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
     // Read sample_submission.csv rows (to multiply with predictions later)
     let mut sample_reader = ReaderBuilder::new(Arc::new(sample_schema.clone()))
         .with_header(true)
-        .with_batch_size(config.batch_size)
+        .with_batch_size(625)
         .build(sample_file)
         .expect("Error reading sample_submission.csv file");
     // Change Int64 fields to Float64 for the writer schema

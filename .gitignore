@@ -6,5 +6,6 @@
 **/*.rs.bk
 
 # Data files and folders
+artifacts/**
 data/**
 !data/**/

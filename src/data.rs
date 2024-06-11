@@ -117,7 +117,7 @@ impl Dataset<ClimSimItem> for ClimSimDataset {
         // row_count
         match self.split {
             ClimSimDataSplit::Train | ClimSimDataSplit::Valid => 256, // 256000
-            ClimSimDataSplit::Test => 625,                            // 625000
+            ClimSimDataSplit::Test => 625000,
         }
     }
 }
