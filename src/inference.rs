@@ -15,6 +15,7 @@ use burn::module::Module;
 use burn::prelude::Tensor;
 use burn::record::{CompactRecorder, Recorder};
 use burn::tensor::backend::AutodiffBackend;
+use indicatif::{ProgressBar, ProgressStyle};
 use num_traits::ToPrimitive;
 
 use crate::data::{ClimSimBatcher, ClimSimDataSplit, ClimSimDataset};
@@ -71,7 +72,15 @@ pub(crate) fn infer<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
     let mut writer = Writer::new(&mut file);
 
     // Get predictions on each mini-batch
+    let bar = ProgressBar::new(625000 / 625);
+    bar.set_style(
+        ProgressStyle::with_template("[{eta_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+            .unwrap(),
+    );
+    println!("Num items: {}", dataloader_test.num_items());
     for (i, batch) in dataloader_test.iter().enumerate() {
+        bar.inc(1);
+        // println!("Writing row group {i}");
         let predictions: Tensor<_, 2> = model.forward(batch.inputs);
         // println!("Predicted: {predictions}");
         // println!("Target {}", batch.targets);
@@ -145,6 +154,7 @@ pub(crate) fn infer<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
             .write(&rec_batch.clone())
             .expect("Failed writing record batch");
     }
+    bar.finish();
     println!(
         "Finished writing predictions to {}/submission.csv file!",
         artifact_dir

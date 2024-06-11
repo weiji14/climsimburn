@@ -8,4 +8,5 @@ arrow = "51.0.0"
 arrow-csv = "51.0.0"
 burn = { version = "0.13.2", features = ["train", "wgpu"] }
 derive-new = "0.6.0"
+indicatif = "0.17.8"
 num-traits = "0.2.19"
