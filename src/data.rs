@@ -69,10 +69,10 @@ impl ClimSimDataset {
 }
 
 impl Dataset<ClimSimItem> for ClimSimDataset {
-    fn get(&self, index: usize) -> Option<ClimSimItem> {
+    fn get(&self, _index: usize) -> Option<ClimSimItem> {
         // let item = self.dataset.nth(index);
         let mut rw_access = self.dataset.write().unwrap();
-        let item = rw_access.nth(index);
+        let item = rw_access.nth(0);
         drop(rw_access);
         match item {
             Some(r) => {
@@ -94,7 +94,7 @@ impl Dataset<ClimSimItem> for ClimSimDataset {
                     .columns()
                     .iter()
                     .map(|arr| as_primitive_array::<Float64Type>(arr).values())
-                    .map(|bar| bar.first().expect("should have one row").to_owned())
+                    .map(|buf| buf.first().expect("should have one row").to_owned())
                     .collect();
 
                 let input: Vec<f64> = row_buffer[0..556].to_vec(); // input has 556 columns
@@ -117,7 +117,7 @@ impl Dataset<ClimSimItem> for ClimSimDataset {
         // row_count
         match self.split {
             ClimSimDataSplit::Train | ClimSimDataSplit::Valid => 256, // 256000
-            ClimSimDataSplit::Test => 625,                            // 625000
+            ClimSimDataSplit::Test => 625000,
         }
     }
 }

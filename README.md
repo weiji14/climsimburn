@@ -38,9 +38,10 @@ up as a Terminal User Interface (TUI) dashboard:
 
 ![ClimSim Burn model training progression visualized on a Terminal User Interface](https://github.com/weiji14/climsimburn/assets/23487320/99d027f6-5f76-4d56-bf07-5d2912c25baf)
 
-Logs will be saved to `/tmp/experiment.log` by default. Hyperparameters can be adjusted
-by modifying the default values in the `TrainingConfig` struct in `src/training.rs`.
-
+Logs will be saved to `/artifacts/vXX/experiment.log` by default. Hyperparameters can be
+adjusted by modifying the default values in the `TrainingConfig` struct in
+`src/training.rs`. After training, the inference script will be ran automatically, and
+the results saved to `artifacts/vXX/submission.csv`.
 
 ## References
 

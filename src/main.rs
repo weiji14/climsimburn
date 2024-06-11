@@ -1,5 +1,6 @@
 // https://burn.dev/book/basic-workflow/backend.html
 mod data;
+mod inference;
 mod model;
 mod training;
 
@@ -13,10 +14,17 @@ fn main() {
     type MyBackend = Wgpu<AutoGraphicsApi, f32, i32>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
 
+    let artifact_dir = "artifacts/v00";
     let device = burn::backend::wgpu::WgpuDevice::BestAvailable;
+
+    // Train model
     crate::training::train::<MyAutodiffBackend>(
-        "/tmp",
+        artifact_dir,
         crate::training::TrainingConfig::new(ClimSimModelConfig::new(1024), AdamConfig::new()),
-        device,
+        device.clone(),
     );
+
+    // Produce submission.csv file
+    println!("Starting inference...");
+    crate::inference::infer::<MyAutodiffBackend>(artifact_dir, device);
 }
