@@ -14,7 +14,7 @@ fn main() {
     type MyBackend = Wgpu<AutoGraphicsApi, f32, i32>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
 
-    let artifact_dir = "artifacts/v00";
+    let artifact_dir = "artifacts/v02";
     let device = burn::backend::wgpu::WgpuDevice::BestAvailable;
 
     // Train model
