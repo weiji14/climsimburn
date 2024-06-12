@@ -54,8 +54,10 @@ impl ClimSimDataset {
             .with_batch_size(1); // read one row at a time
 
         let csv_reader_subset = match split {
-            ClimSimDataSplit::Train => csv_reader.with_bounds(0, 256000).build(file)?,
-            ClimSimDataSplit::Valid => csv_reader.with_bounds(256000, 512000).build(file)?,
+            // train.csv has 10_091_520 rows
+            ClimSimDataSplit::Train => csv_reader.with_bounds(0, 10_000_000).build(file)?,
+            ClimSimDataSplit::Valid => csv_reader.with_bounds(10000000, 10_091_520).build(file)?,
+            // test.csv has 625_000 rows
             ClimSimDataSplit::Test => csv_reader.build(file)?, // read all 625000 rows in test.csv
         };
 
@@ -116,8 +118,9 @@ impl Dataset<ClimSimItem> for ClimSimDataset {
         // drop(rw_access);
         // row_count
         match self.split {
-            ClimSimDataSplit::Train | ClimSimDataSplit::Valid => 256, // 256000
-            ClimSimDataSplit::Test => 625000,
+            ClimSimDataSplit::Train => 512_000,
+            ClimSimDataSplit::Valid => 12_000,
+            ClimSimDataSplit::Test => 625_000,
         }
     }
 }

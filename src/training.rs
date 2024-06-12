@@ -1,5 +1,4 @@
 use burn::data::dataloader::DataLoaderBuilder;
-use burn::nn::loss::{MseLoss, Reduction};
 use burn::optim::AdamConfig;
 use burn::prelude::{Backend, Config, Module, Tensor};
 use burn::record::CompactRecorder;
@@ -16,9 +15,9 @@ use crate::model::{ClimSimModel, ClimSimModelConfig};
 pub struct ClimSimRegressionOutput<B: Backend> {
     /// The loss.
     pub loss: Tensor<B, 1>,
-    /// The output [batch_size, num_classes]
-    pub output: Tensor<B, 2>,
-    /// The targets [batch_size, num_classes]
+    /// The predicted outputs [batch_size, num_classes]
+    pub outputs: Tensor<B, 2>,
+    /// The groundtruth targets [batch_size, num_classes]
     pub targets: Tensor<B, 2>,
 }
 
@@ -35,10 +34,10 @@ impl<B: Backend> ClimSimModel<B> {
         inputs: Tensor<B, 2>,
         targets: Tensor<B, 2>,
     ) -> ClimSimRegressionOutput<B> {
-        let output = self.forward(inputs);
-        let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Mean);
+        let outputs = self.forward(inputs);
+        let loss = self.loss(outputs.clone(), targets.clone());
 
-        ClimSimRegressionOutput::new(loss, output, targets)
+        ClimSimRegressionOutput::new(loss, outputs, targets)
     }
 }
 
@@ -68,7 +67,7 @@ pub struct TrainingConfig {
     #[config(default = 20)]
     pub num_epochs: usize,
 
-    #[config(default = 32)]
+    #[config(default = 512)]
     pub batch_size: usize,
 
     #[config(default = 4)]

@@ -1,4 +1,5 @@
 // https://burn.dev/book/basic-workflow/model.html
+use burn::nn::loss::{HuberLoss, HuberLossConfig, Reduction};
 use burn::nn::{LayerNorm, LayerNormConfig, Linear, LinearConfig};
 use burn::prelude::{Backend, Config, Module, Tensor};
 use burn::tensor::activation::relu;
@@ -10,6 +11,7 @@ pub struct ClimSimModel<B: Backend> {
     linear3: Linear<B>,
     norm1: LayerNorm<B>,
     norm2: LayerNorm<B>,
+    loss_huber: HuberLoss<B>,
 }
 
 #[derive(Config, Debug)]
@@ -26,6 +28,7 @@ impl ClimSimModelConfig {
             linear3: LinearConfig::new(self.hidden_size / 2, 368).init(device),
             norm1: LayerNormConfig::new(self.hidden_size).init(device),
             norm2: LayerNormConfig::new(self.hidden_size / 2).init(device),
+            loss_huber: HuberLossConfig::new(1.0).init(device),
         }
     }
 }
@@ -44,5 +47,10 @@ impl<B: Backend> ClimSimModel<B> {
         let x = relu(x);
 
         self.linear3.forward(x) // [batch_size, num_classes]
+    }
+
+    pub fn loss(&self, predictions: Tensor<B, 2>, targets: Tensor<B, 2>) -> Tensor<B, 1> {
+        self.loss_huber
+            .forward(predictions, targets, Reduction::Sum)
     }
 }
